@@ -24,9 +24,91 @@ function init() {
 
 function ClipListener(track, cb) {
 
+    var trackClipsLength = track.clips.length
+    var segments = []
+    var lastEndTime = 0
+    for(var i = 0; i < trackClipsLength; i++) {
+        var clip = track.clips[i]
+
+        if(lastEndTime !== clip.startTime) {
+            segments.push({
+                type     : 'empty',
+                name     : 'empty',
+                startTime: lastEndTime,
+                endTime  : clip.startTime
+            })
+        }
+
+        segments.push(clip)
+
+        if(i + 1 >= trackClipsLength) {
+            segments.push({
+                type     : 'empty',
+                name     : 'empty',
+                startTime: clip.endTime,
+                endTime  : null
+            })
+        }
+
+        lastEndTime = clip.endTime
+    }
+
+    var segmentLength = segments.length
+    var activeIndex = null
+    var lastValue = 0
+
+    // post('segments', JSON.stringify(segments, null, 2), '\n')
+
+    var obj = {
+
+        findActiveIndex: function(value) {
+            for(var i = 0; i < segmentLength; i++) {
+                if(obj.isActive(value, i)) {
+                    return i
+                }
+            }
+            return null
+        },
+
+        isActive: function(value, index) {
+            return value >= segments[index].startTime &&
+              value <= segments[index].endTime
+        },
+
+        searchActiveIndex: function(value) {
+            post('searchActiveIndex [', value, ']\n')
+            activeIndex = obj.findActiveIndex(value)
+            if (activeIndex !== null) {
+                obj.activateIndex(activeIndex, value)
+            }
+        },
+
+        handleNormalFlow: function(value) {
+
+        },
+
+        handleSkipFlow: function(value) {
+            obj.searchActiveIndex(value)
+        },
+
+        listener: function(value) {
+            if(lastValue + 1 === value) {
+                obj.handleNormalFlow(value)
+            } else {
+                obj.handleSkipFlow(value)
+            }
+            lastValue = value
+        }
+    }
+    return obj
+}
+
+function ClipListener2(track, cb) {
+
     var clips = track.clips
     var clipSize = clips.length
     var activeIndex = null
+    var nextIndex = null
 
     var obj = {
         findActiveIndex: function(value) {
@@ -65,6 +147,10 @@ function ClipListener(track, cb) {
             cb('de-active', clips[index], value)
         },
 
+        isValueBetweenNextIndex: function(index) {
+
+        },
+
         /**
          * - Is an active clip
          *  - But we could also be activating next
@@ -85,6 +171,9 @@ function ClipListener(track, cb) {
             } else {
                 activeIndex = null
                 obj.deactivateIndex(index, value)
+                if(!obj.isLastIndex(index)) {
+
+                }
                 obj.searchActiveIndex(value)
             }
         },
@@ -103,49 +192,6 @@ function ClipListener(track, cb) {
                 obj.handleActiveClip(value, activeIndex)
             } else {
                 obj.searchActiveIndex(value)
-            }
-        }
-    }
-    return obj
-}
-
-function ClipListener2(track, cb) {
-
-    var clipSize = track.clips.length
-    var nextIndex = 0
-    var currentIndex = null
-    var startTimeIndexLookup = {}
-
-    util.forEach(track.clips, function(clip, index) {
-        startTimeIndexLookup[clip.startTime] = index
-    })
-
-    var obj = {
-        findNextIndex: function(value) {
-            post('findNextIndex [', value, ']\n')
-
-        },
-        listener: function(value) {
-            post('ClipListener [', value, ']\n')
-            if(currentIndex !== null && value >= track.clips[currentIndex].endTime) {
-                //We have just exited current clip
-                post("Just exited track [", track.clips[currentIndex].name, ']\n')
-                currentIndex = null
-            }
-            // if(nextIndex >= clipSize) {
-            //     //We are past the end of our clips, just exit
-            //     return
-            // }
-            if (nextIndex < clipSize && value >= track.clips[nextIndex].startTime) {
-                //We have entered the next clip
-                currentIndex = nextIndex
-                nextIndex++
-                post("Just entered track [", track.clips[currentIndex].name, ']\n')
-                return
-            }
-            if (currentIndex !== null && value < track.clips[currentIndex].startTime) {
-                //We are before we should be in the song, set indexes accordingly
-                obj.findNextIndex(value)
             }
         }
     }
