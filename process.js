@@ -9,6 +9,7 @@ function loadbang() {
 }
 
 function init() {
+
     post('init\n')
     clipListeners = []
     // util.songBeatListener(songTimeListener)
@@ -25,41 +26,57 @@ function init() {
 function ClipListener(track, cb) {
 
     var trackClipsLength = track.clips.length
-    var segments = []
-    var lastEndTime = 0
-    for(var i = 0; i < trackClipsLength; i++) {
-        var clip = track.clips[i]
-
-        if(lastEndTime !== clip.startTime) {
-            segments.push({
-                type     : 'empty',
-                name     : 'empty',
-                startTime: lastEndTime,
-                endTime  : clip.startTime
-            })
-        }
-
-        segments.push(clip)
-
-        if(i + 1 >= trackClipsLength) {
-            segments.push({
-                type     : 'empty',
-                name     : 'empty',
-                startTime: clip.endTime,
-                endTime  : null
-            })
-        }
-
-        lastEndTime = clip.endTime
-    }
+    var segments = buildSegments()
 
     var segmentLength = segments.length
     var activeIndex = null
     var lastValue = 0
 
-    // post('segments', JSON.stringify(segments, null, 2), '\n')
+    function buildSegments() {
+        var segments = []
+        var lastEndTime = 0
+        for(var i = 0; i < trackClipsLength; i++) {
+            var clip = track.clips[i]
+
+            if(lastEndTime !== clip.startTime) {
+                segments.push({
+                    type     : 'empty',
+                    name     : 'empty',
+                    startTime: lastEndTime,
+                    endTime  : clip.startTime
+                })
+            }
+
+            segments.push(clip)
+
+            if(i + 1 >= trackClipsLength) {
+                segments.push({
+                    type     : 'empty',
+                    name     : 'empty',
+                    startTime: clip.endTime,
+                    endTime  : null
+                })
+            }
+
+            lastEndTime = clip.endTime
+        }
+        post('segments', JSON.stringify(segments, null, 2), '\n')
+        return segments
+    }
 
     var obj = {
+
+        activateIndex: function(index, value) {
+            if(segments[index].type !== 'empty') {
+                cb('active', segments[index], value)
+            }
+        },
+
+        deactivateIndex: function(index, value) {
+            if(segments[index].type !== 'empty') {
+                cb('de-active', segments[index], value)
+            }
+        },
 
         findActiveIndex: function(value) {
             for(var i = 0; i < segmentLength; i++) {
@@ -72,19 +89,48 @@ function ClipListener(track, cb) {
 
         isActive: function(value, index) {
             return value >= segments[index].startTime &&
-              value <= segments[index].endTime
+              (segments[index].endTime === null || value <= segments[index].endTime)
         },
 
         searchActiveIndex: function(value) {
-            post('searchActiveIndex [', value, ']\n')
+            // post('searchActiveIndex [', value, ']\n')
+            var prevActiveIndex = activeIndex
             activeIndex = obj.findActiveIndex(value)
             if (activeIndex !== null) {
-                obj.activateIndex(activeIndex, value)
+                if(prevActiveIndex !== activeIndex) {
+                    obj.deactivateIndex(prevActiveIndex, value)
+                    obj.activateIndex(activeIndex, value)
+                }
             }
         },
 
-        handleNormalFlow: function(value) {
+        isLastIndex: function(index) {
+            return index + 1 >= segmentLength
+        },
 
+        setNextActive: function(value) {
+            obj.deactivateIndex(activeIndex, value)
+            activeIndex++
+            obj.activateIndex(activeIndex, value)
+        },
+
+        isNextActive: function(value) {
+           if(!obj.isLastIndex(activeIndex + 1)) {
+               return obj.isActive(value, activeIndex + 1)
+           } else {
+               return false
+           }
+        },
+
+        handleNormalFlow: function(value) {
+            if(obj.isActive(value, activeIndex)) {
+                if(obj.isNextActive(value)) {
+                    obj.setNextActive(value)
+                }
+            } else {
+                //we passed the active point
+                obj.setNextActive(value)
+            }
         },
 
         handleSkipFlow: function(value) {
@@ -92,107 +138,12 @@ function ClipListener(track, cb) {
         },
 
         listener: function(value) {
-            if(lastValue + 1 === value) {
+            if(lastValue + 1 === value && activeIndex !== null) {
                 obj.handleNormalFlow(value)
             } else {
                 obj.handleSkipFlow(value)
             }
             lastValue = value
-        }
-    }
-    return obj
-}
-
-function ClipListener2(track, cb) {
-
-    var clips = track.clips
-    var clipSize = clips.length
-    var activeIndex = null
-    var nextIndex = null
-
-    var obj = {
-        findActiveIndex: function(value) {
-            for(var i = 0; i < clipSize; i++) {
-                if(obj.isActive(value, i)) {
-                    return i
-                }
-            }
-            return null
-        },
-
-        isActive: function(value, index) {
-            return value >= clips[index].startTime &&
-              value <= clips[index].endTime
-        },
-
-
-        isLastIndex: function(index) {
-            return index + 1 === clipSize
-        },
-
-        isFirstIndex: function(index) {
-            return index === 0
-        },
-
-        isNextClipActive: function(value, index) {
-            return !obj.isLastIndex(index) &&
-              value >= clips[index + 1].startTime
-        },
-
-        activateIndex: function(index, value) {
-            cb('active', clips[index], value)
-        },
-
-        deactivateIndex: function(index, value) {
-            cb('de-active', clips[index], value)
-        },
-
-        isValueBetweenNextIndex: function(index) {
-
-        },
-
-        /**
-         * - Is an active clip
-         *  - But we could also be activating next
-         *   - Deactivate active
-         *   - Activate next
-         * - Just stopped being active
-         *  - Deactivate active
-         */
-        handleActiveClip: function(value, index) {
-            if(obj.isActive(value, index)) {
-                if(obj.isNextClipActive(value, index)) {
-                    activeIndex++
-                    obj.activateIndex(activeIndex, value)
-                    obj.deactivateIndex(index, value)
-                } else {
-                    //we are just in the active clip, so do nothing
-                }
-            } else {
-                activeIndex = null
-                obj.deactivateIndex(index, value)
-                if(!obj.isLastIndex(index)) {
-
-                }
-                obj.searchActiveIndex(value)
-            }
-        },
-
-        searchActiveIndex: function(value) {
-            post('searchActiveIndex [', value, ']\n')
-            activeIndex = obj.findActiveIndex(value)
-            if (activeIndex !== null) {
-                obj.activateIndex(activeIndex, value)
-            }
-        },
-
-        listener: function(value) {
-            // post('ClipListener [', value, ']\n')
-            if(activeIndex !== null) {
-                obj.handleActiveClip(value, activeIndex)
-            } else {
-                obj.searchActiveIndex(value)
-            }
         }
     }
     return obj

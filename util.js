@@ -56,6 +56,15 @@ exports.dedup = function(cb) {
     }
 }
 
+exports.foldLeft = function(arr, init, func) {
+    var length = arr.length
+    var accu = init
+    for(var i = 0; i < length;i++) {
+        accu = func(accu, arr[i])
+    }
+    return accu
+}
+
 exports.map = function(arr, func) {
     var outArr = []
     var length = arr.length
@@ -70,7 +79,6 @@ exports.forEach = function(arr, func) {
     for(var i = 0; i < length;i++) {
         func(arr[i], i)
     }
-
 }
 
 exports.ifNotNull = function(value, ifNotNull) {
@@ -79,4 +87,9 @@ exports.ifNotNull = function(value, ifNotNull) {
     } else {
         return ifNotNull(value)
     }
+}
+
+exports.log = function() {
+
+    post(arguments, '\n')
 }
