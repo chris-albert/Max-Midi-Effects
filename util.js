@@ -15,6 +15,7 @@ exports.observe = function(path, property, cb) {
     }
     var api = new LiveAPI(temp, path)
     api.property = property
+    return api
 }
 
 exports.memo = function(cb) {
@@ -41,7 +42,7 @@ exports.songTimeListener = function(cb) {
 
 exports.songBeatListener = function(cb) {
     var deduper = exports.dedup(cb)
-    memoSongTimeListener(function(a) {
+    return memoSongTimeListener(function(a) {
         deduper(Math.floor(a))
     })
 }
@@ -92,4 +93,14 @@ exports.ifNotNull = function(value, ifNotNull) {
 exports.log = function() {
 
     post(arguments, '\n')
+}
+
+exports.get_hex_from_int = function (i) {
+
+    var out = i.toString(16).toUpperCase()
+    if(i <= 15) {
+        return "0" + out
+    } else {
+        return out
+    }
 }

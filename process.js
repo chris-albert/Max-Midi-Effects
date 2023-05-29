@@ -1,26 +1,32 @@
 var util = require('util')
 
-var clipListeners = null
+outlets = 1
 
-function loadbang() {
+var clipListener = null
 
-    post('loaded process.js\n')
-    init()
+function sendJsonOutput(json) {
+    outlet(0, JSON.stringify(json))
+}
+
+function onClipChange(status, clip, value) {
+    post('Clip [', clip.name, '][', status, '][', value, ']\n')
+    sendJsonOutput({
+        status: status,
+        value: value,
+        clip: clip
+    })
 }
 
 function init() {
 
-    post('init\n')
-    clipListeners = []
-    // util.songBeatListener(songTimeListener)
-
+    cpost('Running Init')
     var track = parseTrack()
     post('Track', JSON.stringify(track, null, 2), '\n')
 
-    var clipListener = ClipListener(track, function(status, clip, value) {
-        post('Clip [', clip.name, '][', status, '][', value, ']\n')
-    })
-    util.songBeatListener(clipListener.listener)
+    clipListener = ClipListener(track, onClipChange)
+    util.observe('live_set', 'current_song_time', clipListener.listener)
+    outlet(0, 'bang')
+    cpost('Init Complete, ', track.clips.length, ' clips parsed')
 }
 
 function ClipListener(track, cb) {
@@ -93,7 +99,6 @@ function ClipListener(track, cb) {
         },
 
         searchActiveIndex: function(value) {
-            // post('searchActiveIndex [', value, ']\n')
             var prevActiveIndex = activeIndex
             activeIndex = obj.findActiveIndex(value)
             if (activeIndex !== null) {
@@ -149,10 +154,6 @@ function ClipListener(track, cb) {
     return obj
 }
 
-function songTimeListener(value) {
-    post('songTimeListener', value, '\n')
-}
-
 function parseTrack() {
     var api = new LiveAPI(function() {}, 'this_device canonical_parent')
     var name = api.get('name')
@@ -175,6 +176,7 @@ function parseTrackClip(api, clipIndex) {
         type: 'clip',
         path: api.path,
         name: api.get('name')[0],
+        color: api.get('color')[0],
         startTime: api.get('start_time')[0],
         endTime: api.get('end_time')[0],
     }
