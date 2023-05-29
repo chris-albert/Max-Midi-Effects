@@ -8,25 +8,33 @@ function sendJsonOutput(json) {
     outlet(0, JSON.stringify(json))
 }
 
-function onClipChange(status, clip, value) {
-    post('Clip [', clip.name, '][', status, '][', value, ']\n')
-    sendJsonOutput({
-        status: status,
-        value: value,
-        clip: clip
-    })
+function onClipChange(track) {
+    return function(status, clip, value) {
+        post('Clip [', clip.name, '][', status, '][', value, ']\n')
+        sendJsonOutput({
+            type: 'clipChange',
+            track: {
+              name: track.name,
+              color: track.color
+            },
+            status: status,
+            value : value,
+            clip  : clip
+        })
+    }
 }
 
 function init() {
 
-    cpost('Running Init')
     var track = parseTrack()
     post('Track', JSON.stringify(track, null, 2), '\n')
 
-    clipListener = ClipListener(track, onClipChange)
+    clipListener = ClipListener(track, onClipChange(track))
     util.observe('live_set', 'current_song_time', clipListener.listener)
-    outlet(0, 'bang')
-    cpost('Init Complete, ', track.clips.length, ' clips parsed')
+    sendJsonOutput({
+        type: 'init',
+        track: track
+    })
 }
 
 function ClipListener(track, cb) {
@@ -156,7 +164,8 @@ function ClipListener(track, cb) {
 
 function parseTrack() {
     var api = new LiveAPI(function() {}, 'this_device canonical_parent')
-    var name = api.get('name')
+    var name = api.get('name')[0]
+    var color = api.get('color')[0]
     var clipsCount = api.getcount('arrangement_clips')
     var clips = []
     for(var clipIndex = 0; clipIndex < clipsCount; clipIndex++) {
@@ -164,8 +173,8 @@ function parseTrack() {
     }
     return {
         type: 'track',
-        path: api.path,
-        name: name[0],
+        name: name,
+        color: color,
         clips: clips
     }
 }
@@ -174,7 +183,6 @@ function parseTrackClip(api, clipIndex) {
     api.path = 'this_device canonical_parent arrangement_clips ' + clipIndex
     return {
         type: 'clip',
-        path: api.path,
         name: api.get('name')[0],
         color: api.get('color')[0],
         startTime: api.get('start_time')[0],
