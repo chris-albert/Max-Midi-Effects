@@ -1,19 +1,14 @@
-var util = require("./util");
+outlets = 1
 
-outlets = 2
-
-function sendJsonOutput(json) {
-  outlet(1, JSON.stringify(json))
-}
+var api = null
 
 function init() {
-
-  util.songBeatListener(function(value) {
-    post('Emit Beats: ', value, '\n')
-    outlet(0, value)
-    sendJsonOutput({
-      type: 'beat',
-      value: value
-    })
-  })
+  if(api !== null) {
+    api = new LiveApi(function(prop, value) {
+      if(prop === 'current_song_time') {
+        outlet(0, value)
+      }
+    }, 'live_set')
+    api.property = 'current_song_time'
+  }
 }

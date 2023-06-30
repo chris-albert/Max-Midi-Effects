@@ -82,6 +82,21 @@ exports.forEach = function(arr, func) {
     }
 }
 
+exports.chunk = function(arr, func, count) {
+    var buffer = []
+    exports.forEach(arr, function(value) {
+        buffer.push(value)
+        if(buffer.length >= count) {
+            func(buffer)
+        }
+        buffer = []
+    })
+
+    if(buffer.length >= 0) {
+        func(buffer)
+    }
+}
+
 exports.ifNotNull = function(value, ifNotNull) {
     if(value === null) {
         return null

@@ -2,8 +2,8 @@
 inlets = 1
 outlets = 1
 
-var sysExStart = 240
-var sysExEnd = 247
+var sysExStart = 240 //F0
+var sysExEnd = 247 //F7
 
 function json(input) {
   var length = input.length
