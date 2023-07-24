@@ -18,7 +18,8 @@ var SYSEX = {
 }
 
 function toBytes(input) {
-  var raw = JSON.stringify(input).replace("\"", "")
+  post("input: " + input + "\n")
+  var raw = JSON.stringify(input).replaceAll("\"", "")
   var length = raw.length
   var outArr = []
   for(var i = 0; i < length; i++) {
@@ -44,34 +45,34 @@ function sysex(datas) {
   return outArr
 }
 
-export function init() {
+exports.init = function() {
   return sysex([STATUS.INIT])
 }
 
-export function done() {
+exports.done = function() {
   return sysex([STATUS.DONE])
 }
 
-export function track(name, trackIndex, color) {
+exports.track = function(name, trackIndex, color) {
   return sysex([STATUS.TRACK, name, trackIndex, color])
 }
 
-export function clip(name, trackIndex, clipIndex, color, startTime, endTime) {
+exports.clip = function(name, trackIndex, clipIndex, color, startTime, endTime) {
   return sysex([STATUS.CLIP, name, trackIndex, clipIndex, color, startTime, endTime])
 }
 
-export function beat(value) {
+exports.beat = function(value) {
   return sysex([STATUS.BEAT, value])
 }
 
-export function barBeat(value) {
+exports.barBeat = function(value) {
   return sysex([STATUS.BAR_BEAT, value])
 }
 
-export function sig(count, length) {
+exports.sig = function(count, length) {
   return sysex([STATUS.SIG, count, length])
 }
 
-export function tempo(bpm) {
+exports.tempo = function(bpm) {
   return sysex([STATUS.TEMPO, bpm])
 }

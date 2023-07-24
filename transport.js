@@ -6,8 +6,8 @@ function barBeat(num) {
   outlet(0, sysex.barBeat(num))
 }
 
-function sig(nums) {
-  outlet(0, sysex.barBeat(nums[0], nums[1]))
+function sig(count, duration) {
+  outlet(0, sysex.sig(count, duration))
 }
 
 function tempo(tempo) {

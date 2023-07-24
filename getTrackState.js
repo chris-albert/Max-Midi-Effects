@@ -34,7 +34,7 @@ function emitTracks(tracks) {
     })
 
     forEach(tracks.clips, function(clip) {
-        outleet(0, sysex.clip(clip.name, clip.trackIndex, clip.clipIndex, clip.color, clip.startTime, clip.endTime))
+        outlet(0, sysex.clip(clip.name, clip.trackIndex, clip.clipIndex, clip.color, clip.startTime, clip.endTime))
     })
 
     outlet(0, sysex.done())
